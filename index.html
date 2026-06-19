@@ -272,6 +272,14 @@
     border-color: var(--accent);
     background: rgba(0,201,167,.06);
   }
+  .field-input:disabled {
+    background: rgba(255,255,255,.03);
+    border-color: rgba(0,201,167,.3);
+    color: var(--grey-400);
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+  .field-input:disabled::placeholder { color: var(--grey-600); }
   .btn-primary {
     width: 100%;
     background: var(--accent);
@@ -1656,6 +1664,13 @@
     <div class="welcome-card">
       <h3>Nova comanda 👋</h3>
       <p>Digite o telefone para abrir a comanda. Cliente que já veio é só digitar o número!</p>
+      
+      <!-- Aviso de cliente recorrente -->
+      <div id="welcome-recurrent-alert" style="display:none;background:var(--accent-dim);border:2px solid var(--accent);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;font-size:14px;font-weight:600;color:var(--accent);text-align:center">
+        ✓ Bem-vindo de volta, <span id="welcome-recurrent-name">João</span>!<br>
+        <span style="font-size:12px;font-weight:500;color:var(--accent)">Seus dados estão preenchidos. É só clicar em "Abrir Comanda"</span>
+      </div>
+      
       <div class="field-group">
         <div>
           <label class="field-label" for="inp-whats">Telefone (WhatsApp) *</label>
@@ -2275,6 +2290,9 @@ document.getElementById('btn-open-new-comanda').addEventListener('click', () => 
   document.getElementById('inp-whats').value = '';
   document.getElementById('inp-pin').value   = '';
   document.getElementById('welcome-hint').style.display = 'none';
+  document.getElementById('welcome-recurrent-alert').style.display = 'none';
+  document.getElementById('inp-name').disabled = false;
+  document.getElementById('inp-pin').disabled = false;
   lastLookupPhone = '';
   state.activeComandaId = null;
   state.currentUser     = null;
@@ -2292,18 +2310,40 @@ let lastLookupPhone = '';
 async function lookupCliente() {
   const digits = normalizePhone(document.getElementById('inp-whats').value);
   const hint = document.getElementById('welcome-hint');
-  if (digits.length < 10) { hint.style.display = 'none'; lastLookupPhone = ''; return; }
+  const alert = document.getElementById('welcome-recurrent-alert');
+  const nameField = document.getElementById('inp-name');
+  const pinField = document.getElementById('inp-pin');
+  
+  if (digits.length < 10) {
+    hint.style.display = 'none';
+    alert.style.display = 'none';
+    nameField.disabled = false;
+    pinField.disabled = false;
+    lastLookupPhone = '';
+    return;
+  }
   if (digits === lastLookupPhone) return;
   lastLookupPhone = digits;
   try {
     const snap = await getDoc(doc(db, 'clientes', digits));
     if (snap.exists()) {
       const c = snap.data();
-      document.getElementById('inp-name').value = c.name || '';
-      if (c.pin) document.getElementById('inp-pin').value = c.pin;
-      hint.textContent = `👋 Bem-vindo de volta, ${c.name}!`;
-      hint.style.display = 'block';
+      nameField.value = c.name || '';
+      if (c.pin) pinField.value = c.pin;
+      
+      // Desabilita os campos pois estão preenchidos automaticamente
+      nameField.disabled = true;
+      pinField.disabled = true;
+      
+      // Mostra aviso de cliente recorrente
+      document.getElementById('welcome-recurrent-name').textContent = c.name;
+      alert.style.display = 'block';
+      hint.style.display = 'none';
     } else {
+      // Cliente novo: deixa editar
+      nameField.disabled = false;
+      pinField.disabled = false;
+      alert.style.display = 'none';
       hint.style.display = 'none';
     }
   } catch (e) { console.error(e); }
@@ -2715,6 +2755,9 @@ document.getElementById('btn-new-comanda').addEventListener('click', () => {
   document.getElementById('inp-whats').value  = '';
   document.getElementById('inp-pin').value    = '';
   document.getElementById('welcome-hint').style.display = 'none';
+  document.getElementById('welcome-recurrent-alert').style.display = 'none';
+  document.getElementById('inp-name').disabled = false;
+  document.getElementById('inp-pin').disabled = false;
   lastLookupPhone = '';
   state.activeComandaId = null;
   state.currentUser     = null;
